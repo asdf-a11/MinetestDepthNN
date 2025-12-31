@@ -1,6 +1,6 @@
 clearFileOnRun = true
 writeToFile = true
-writeFileString = minetest.get_worldpath().."/get_depth_buffer_new/out_new.txt"
+writeFileString = minetest.get_worldpath().."/depth/out_new.txt"
 playerHasJoined = false
 savedDepthBufferCounter = 0
 playerPressedKey = false
@@ -130,7 +130,7 @@ end
 local function work()
   minetest.after(timeBetween, work)
 	if playerHasJoined == true then
-		local playerRef = minetest.get_player_by_name(playerName)
+		local playerRef = minetest.get_player_by_name("singleplayer")
 		if playerRef:get_player_control().sneak == true then
 			playerPressedKey = true
 		end

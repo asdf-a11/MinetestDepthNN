@@ -11,44 +11,42 @@ import random
 import keyboard
 import torch.nn.functional as F
 import math
-import pygame
+#import pygame
 import cv2
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as T
 
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
+if torch.cuda.is_available():
+  print("CUDA is available! Running on GPU:", torch.cuda.get_device_name(0))
+  device = "cuda"
+else:
+  print("CUDA is not available. Running on CPU.")
+  device = "cpu"
+
 print(f"Using {device} device")
 
 imgSize = 2**8
-depthImageSize = 2**6#100
+depthImageSize = 2**6
 MAX_DEPTH =  100
 BATCH_SIZE = 16
+TRAINING_DATA_COUNTER = 6
 POWER = 1
 SAVE_NAME = "model.pt"
 activationFunction =  nn.LeakyReLU(0.1)
-#print(help(activationFunction))
-#input()
+
 
 def LoadScreenShots():
-  string = "imgData_newLua.txt"
-  f = open(string, "rb")
-  content = f.read()
-  f.close()
-  lst = np.frombuffer(content, dtype=np.uint8)
-  #print(lst[0], lst[imgSize*imgSize], lst[imgSize*imgSize-1])
-  #lst = np.reshape(lst,(len(lst) // imgSize** 2,1,imgSize, imgSize))
-  #plt.imshow(np.reshape(lst[0],(imgSize,imgSize)));plt.show() 
-  lst = np.reshape(lst, (len(content) // imgSize ** 2, 1,imgSize, imgSize))
-  lst = lst.astype(np.float32) / 255.0
-  return lst
+  lst = []
+  folder = "/home/william/.minetest/mods/MinetestDepthNN/screenshots/"
+  for i in range(TRAINING_DATA_COUNTER):
+    fileName = f"{folder}{i}.png"
+    image = cv2.imread(fileName)
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY, 0)
+    lst.append(image)
+  lst = np.reshape(lst, (TRAINING_DATA_COUNTER, 1, imgSize, imgSize))
+  return np.array(lst, dtype=np.float32) / 255.0
 def LoadDepthBuffer():
-  string = R"C:\Users\xbox\Downloads\minetest-5.7.0-win64\minetest-5.7.0-win64\worlds\newDepthBufferWorld\get_depth_buffer_new\out_new.txt"
+  string = "/home/william/.minetest/worlds/TrainDepth/depth/out_new.txt"
   f = open(string, "r")
   content = f.read()
   f.close()
@@ -66,22 +64,9 @@ def LoadDepthBuffer():
   print(frameList.shape)
   frameList = frameList.flatten()
   frameList = np.reshape(frameList, (numberOfFrames, 1, depthImageSize, depthImageSize)) / MAX_DEPTH
-  #resizedFrameList = np.empty((numberOfFrames, 1, imgSize, imgSize), dtype=np.float32)
-  #for i in range(frameList.shape[0]):
-  #  resizedFrameList[i] = cv2.resize(frameList[i][0], (imgSize, imgSize), interpolation=cv2.INTER_AREA)
   resizedFrameList = frameList
-  #frameList = np.clip(frameList, 0, 0.75)
-  #frameList **= 0.5
   print(np.max(frameList))
   print(np.min(frameList))
-  c  = 4.3
-  #resizedFrameList = -(math.e ** (resizedFrameList*-c)) + 1
-  #resizedFrameList **= 0.3
-  l = -0.05
-  c = 67
-  k = 0.6
-  #resizedFrameList = 1 + k * math.e ** -(c*(resizedFrameList+l))
-  #resizedFrameList = resizedFrameList/resizedFrameList**2
   c = 62.0
   resizedFrameList = np.log10(c*resizedFrameList + 0.1) / math.log10(c+0.1)
   return resizedFrameList 
@@ -253,7 +238,7 @@ correctDepthBuffer = correctDepthBuffer[:minSize]
 
 print(screenShots.shape, correctDepthBuffer.shape)
 
-testDataNumber = 30
+testDataNumber = 1
 testScreenShots = screenShots[-testDataNumber:]
 testCorrectDepthBuffer = correctDepthBuffer[-testDataNumber:]
 if testDataNumber != 0:
